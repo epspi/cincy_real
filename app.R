@@ -10,8 +10,16 @@ require(leaflet)
 ##################################################
 
 # Mapping themes
-bases <- c(
+providers <- c(
     'OpenStreetMap.HOT',
+    'Hydda.Full',
+    'MapBox',
+    'MapQuestOpen.Aerial',
+    'Esri.WorldImagery',
+    'CartoDB.Positron',
+    'HERE.hybridDay',
+    'HERE.normalDay',
+    'HERE.normalDayGrey',
     'Thunderforest.Landscape',
     'Stamen.Terrain',
     'Stamen.Watercolor'
@@ -90,6 +98,24 @@ rescrape <- function() {
     write.csv(dat, "CSV/dat.csv",row.names = F)
 }
 
+####### FUNCTION: ADDPROVIDERTILES_RECURSIVE ##############
+## Dynamically add N provider tiles
+addProviderTiles_recursive <- function(map, providers) {
+
+    tmp <- addProviderTiles(map,
+                            providers[1],
+                            group = providers[1]
+                            #options = providerTileOptions(noWrap = TRUE)
+                            )
+
+    if (length(providers) > 1) {
+        tmp %>% addProviderTiles_recursive(providers[-1])
+    } else {
+        tmp
+    }
+}
+
+
 
 ##################################################
 ##################### UI #########################
@@ -116,64 +142,63 @@ ui <- navbarPage("Cincy Real", id = "nav",
 
 server <- function(input, output, session) {
 
-    # Recording current time and checking timestamp from previously downloaded data
-    curtime  <- Sys.time()
-    lasttime <- try(
-        read.csv("CSV/timestamp.csv", stringsAsFactors = F) %>% unlist,
-        silent = T)
-
-    if (class(lasttime) == "try-error")
+    ####### RUN INITIAL #####################
     {
-        lasttime <- curtime  - auto_refresh_time
-        cat("No Scrape History Found", "\n\n")
+        # Recording current time and checking timestamp from previously downloaded data
+        curtime  <- Sys.time()
+        lasttime <- try(
+            read.csv("CSV/timestamp.csv", stringsAsFactors = F) %>% unlist,
+            silent = T)
 
-    } else {
-        lasttime <- lasttime %>%
-            strptime(time_file_format) %>%
-            as.POSIXct
+        if (class(lasttime) == "try-error")
+        {
+            lasttime <- curtime  - auto_refresh_time
+            cat("No Scrape History Found", "\n\n")
 
-        cat("Last Scrape:  ",
-            format(lasttime, time_file_format, usetz = T, tz = "EST5EDT"),
+        } else {
+            lasttime <- lasttime %>%
+                strptime(time_file_format) %>%
+                as.POSIXct
+
+            cat("Last Scrape:  ",
+                format(lasttime, time_file_format, usetz = T, tz = "EST5EDT"),
+                "\n")
+        }
+
+        # Status Updates
+        cat("Current Time: ",
+            format(curtime, time_file_format, usetz = T, tz = "EST5EDT"),
             "\n")
+        cat("Refresh Due:  ",
+            format(lasttime + auto_refresh_time, time_file_format, usetz = T, tz = "EST5EDT"),
+            "\n\n")
+
+        # Rescrape if due time
+        if (curtime >= lasttime + auto_refresh_time) {
+            rescrape()
+        }
+
+        # Filter out auctions that have already passed
+        dat  <- "CSV/dat.csv" %>%
+            read.csv(stringsAsFactors = F)
+
+        pop <- dat %>%
+            apply(1, gen_popup)
+        names(pop) <- NULL
+
     }
-
-    # Status Updates
-    cat("Current Time: ",
-        format(curtime, time_file_format, usetz = T, tz = "EST5EDT"),
-        "\n")
-    cat("Refresh Due:  ",
-        format(lasttime + auto_refresh_time, time_file_format, usetz = T, tz = "EST5EDT"),
-        "\n\n")
-
-    # Rescrape if due time
-    if (curtime >= lasttime + auto_refresh_time) {
-        rescrape()
-    }
-
-    # Filter out auctions that have already passed
-    dat  <- "CSV/dat.csv" %>%
-        read.csv(stringsAsFactors = F)
-
-    pop <- dat %>%
-        apply(1, gen_popup)
-    names(pop) <- NULL
 
     ####### OUTPUT: MYMAP #####################
     output$mymap <- renderLeaflet({
         leaflet(dat) %>%
             addMarkers(~lng, ~lat, popup = pop) %>%
             addTiles(group = "OpenStreetMap.default") %>%
-            addProviderTiles(bases[1], group = bases[1]) %>%
-            addProviderTiles(bases[2], group = bases[2]) %>%
-            addProviderTiles(bases[3], group = bases[3]) %>%
-            addProviderTiles(bases[4], group = bases[4]) %>%
+            addProviderTiles_recursive(providers) %>%
             addLayersControl(
-                baseGroups = c("OpenStreetMap.default", bases),
+                baseGroups = c("OpenStreetMap.default", providers),
                 position = 'bottomleft',
                 options = layersControlOptions(collapsed = TRUE)
             )
-#             addProviderTiles(bases[1],
-#                              options = providerTileOptions(noWrap = TRUE)
     })
 }
 

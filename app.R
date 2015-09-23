@@ -96,7 +96,7 @@ addProviderTiles_recursive <- function(map, providers) {
                             providers[1],
                             group = providers[1]
                             #options = providerTileOptions(noWrap = TRUE)
-                            )
+    )
 
     if (length(providers) > 1) {
         tmp %>% addProviderTiles_recursive(providers[-1])
@@ -111,18 +111,18 @@ addProviderTiles_recursive <- function(map, providers) {
 gen_popup <- function(dat) {
 
     paste(sep = "</br>",
-        h4(dat["Address"]),
-        paste0(strong("A "), dat["Appraisal.Amount"],
-               strong('  /  S '), dat["Starting.Bid"],
-               strong("  /  J "), dat["Judgement.Amount"]),
-        #dat["Parcel"],
-        a(href = dat["Parcel"] %>%
-              gsub("-","",.) %>%
-              gsub("PARCEL_NUM", . , warren_redirect),
-          target="_blank",
-          dat["Parcel"]),
+          dat["Address"] %>% h4(),
+          paste0(strong("A "), dat["Appraisal.Amount"],
+                 strong('  /  S '), dat["Starting.Bid"],
+                 strong("  /  J "), dat["Judgement.Amount"]),
+          #dat["Parcel"],
+          a(href = dat["Parcel"] %>%
+                gsub("-","",.) %>%
+                gsub("PARCEL_NUM", . , warren_redirect),
+            target="_blank",
+            dat["Parcel"]),
           #tags$i(class="fa fa-home")
-        icon("home")
+          icon("home")
     ) #%>% paste0
 }
 

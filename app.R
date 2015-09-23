@@ -163,20 +163,17 @@ server <- function(input, output, session) {
         leaflet(dat) %>%
             addMarkers(~lng, ~lat, popup = pop) %>%
             addTiles(group = "OpenStreetMap.default") %>%
-#             addProviderTiles(base_groups[1], group = base_groups[1]) %>%
-#             addProviderTiles(base_groups[2], group = base_groups[2]) %>%
-#             addProviderTiles(base_groups[3], group = base_groups[3]) %>%
-#             addProviderTiles(base_groups[4], group = base_groups[4]) %>%
+            addProviderTiles(bases[1], group = bases[1]) %>%
+            addProviderTiles(bases[2], group = bases[2]) %>%
+            addProviderTiles(bases[3], group = bases[3]) %>%
+            addProviderTiles(bases[4], group = bases[4]) %>%
             addLayersControl(
-                baseGroups = c("OpenStreetMap.default"),#, base_groups),
-                options = layersControlOptions(collapsed = FALSE)
+                baseGroups = c("OpenStreetMap.default", bases),
+                position = 'bottomleft',
+                options = layersControlOptions(collapsed = TRUE)
             )
-
-#         leaflet() %>%
 #             addProviderTiles(bases[1],
 #                              options = providerTileOptions(noWrap = TRUE)
-#             ) %>%
-#             addMarkers(data = points())
     })
 }
 

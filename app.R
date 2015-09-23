@@ -13,16 +13,16 @@ require(leaflet)
 providers <- c(
     'OpenStreetMap.HOT',
     'Hydda.Full',
-    'MapBox',
     'MapQuestOpen.Aerial',
     'Esri.WorldImagery',
     'CartoDB.Positron',
-    'HERE.hybridDay',
-    'HERE.normalDay',
-    'HERE.normalDayGrey',
     'Thunderforest.Landscape',
     'Stamen.Terrain',
     'Stamen.Watercolor'
+    'MapBox',
+    'HERE.hybridDay',
+    'HERE.normalDay',
+    'HERE.normalDayGrey'
 )
 
 # Some constants

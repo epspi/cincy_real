@@ -2,8 +2,10 @@
 ########### A SINGLE-FILE SHINY APP ##############
 
 require(rvest)
+require(httr)
 require(shiny)
 require(leaflet)
+require(dplyr)
 
 ##################################################
 ############ VARIABLES & CONSTANTS ###############
@@ -11,14 +13,14 @@ require(leaflet)
 
 # Mapping themes
 providers <- c(
-    'OpenStreetMap.HOT',
-    'Hydda.Full',
-    'MapQuestOpen.Aerial',
-    'Esri.WorldImagery',
     'CartoDB.Positron',
+    'OpenStreetMap.HOT',
+    'Esri.WorldImagery',
     'Thunderforest.Landscape',
+    'Hydda.Full',
     'Stamen.Terrain',
-    'Stamen.Watercolor'
+    'Stamen.Watercolor',
+    'MapQuestOpen.Aerial',
     'MapBox',
     'HERE.hybridDay',
     'HERE.normalDay',
@@ -29,6 +31,7 @@ providers <- c(
 auto_refresh_time <- 3600 * 24
 api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
 time_file_format  <- "%Y-%m-%d %H:%M:%S"
+warren_redirect <- "http://www.co.warren.oh.us/auditor/property_search/prop_grid.asp?strSQL_CMD=SELECT+*+FROM+CAMAWEB.PRPTY+WHERE+SDWLL_NBR+like+'PARCEL_NUM%25'+ORDER+BY+SDWLL_NBR"
 
 
 ##################################################
@@ -64,19 +67,6 @@ getCoord3 <- function(api_key, addresses) {
         lapply(simplify_coord) %>%
         lapply(data.frame, stringsAsFactors=FALSE) %>%
         do.call(rbind, .)
-}
-
-####### FUNCTION: GEN_POPUP ####################
-## Generate HTML for popup
-gen_popup <- function(dat) {
-
-    paste(sep = "<br/>",
-          strong(dat["Address"]),
-          dat["Appraisal.Amount"],
-          dat["Judgement.Amount"],
-          dat["Starting.Bid"],
-          dat["Parcel"]
-    ) %>% HTML
 }
 
 ####### FUNCTION: RESCRAPE #####################
@@ -116,6 +106,27 @@ addProviderTiles_recursive <- function(map, providers) {
 }
 
 
+####### FUNCTION: GEN_POPUP ####################
+## Generate HTML for popup
+gen_popup <- function(dat) {
+
+    paste(sep = "</br>",
+        h4(dat["Address"]),
+        paste0(strong("A "), dat["Appraisal.Amount"],
+               strong('  /  S '), dat["Starting.Bid"],
+               strong("  /  J "), dat["Judgement.Amount"]),
+        #dat["Parcel"],
+        a(href = dat["Parcel"] %>%
+              gsub("-","",.) %>%
+              gsub("PARCEL_NUM", . , warren_redirect),
+          target="_blank",
+          dat["Parcel"]),
+          #tags$i(class="fa fa-home")
+        icon("home")
+    ) #%>% paste0
+}
+
+
 
 ##################################################
 ##################### UI #########################
@@ -132,6 +143,9 @@ ui <- navbarPage("Cincy Real", id = "nav",
                          ),
                          leafletOutput("mymap", width="100%", height="100%")
                      )
+                 ),
+                 tabPanel(
+                     "Settings"
                  )
 )
 
@@ -195,7 +209,7 @@ server <- function(input, output, session) {
             addTiles(group = "OpenStreetMap.default") %>%
             addProviderTiles_recursive(providers) %>%
             addLayersControl(
-                baseGroups = c("OpenStreetMap.default", providers),
+                baseGroups = c(providers, "OpenStreetMap.default"),
                 position = 'bottomleft',
                 options = layersControlOptions(collapsed = TRUE)
             )

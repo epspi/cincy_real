@@ -2,8 +2,17 @@ require(rvest)
 require(shiny)
 require(leaflet)
 
+bases <- c(
+    'OpenStreetMap.HOT',
+    'Thunderforest.Landscape',
+    'Stamen.Terrain',
+    'Stamen.Watercolor'
+)
 
+# Some constants
+auto_refresh_time <- 3600 * 24
 api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
+time_file_format  <- "%Y-%m-%d %H:%M:%S"
 
 ################################################
 ################ FUNCTIONS #####################
@@ -105,5 +114,12 @@ names(pop) <- NULL
 dat %>%
     leaflet %>%
     addMarkers(~lng, ~lat, popup = pop) %>%
-    #addTiles()
-    addProviderTiles(provider = 'Stamen.Terrain')
+    addTiles(group = "OpenStreetMap.default") %>%
+    addProviderTiles(bases[1], group = bases[1]) %>%
+    addProviderTiles(bases[2], group = bases[2]) %>%
+    addProviderTiles(bases[3], group = bases[3]) %>%
+    addProviderTiles(bases[4], group = bases[4]) %>%
+    addLayersControl(
+        baseGroups = c("OpenStreetMap.default", bases),
+        options = layersControlOptions(collapsed = FALSE)
+    )

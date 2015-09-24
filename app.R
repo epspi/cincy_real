@@ -76,9 +76,16 @@ rescrape <- function() {
         html_nodes("table") %>%
         html_table() %>%
         data.frame %>%
-        select(-Var.1) %>%
-        rename(Address = Property.Address, Parcel = Parcel..) %>%
-        mutate(Address =  gsub(",?   +,?", ", ", Address))
+        rename(Date = Date.of.Sale,
+               Status = Sales.Status,
+               Address = Property.Address,
+               Parcel = Parcel..,
+               MinBid = Starting.Bid,
+               Appraisal = Appraisal.Amount,
+               Case = Case.Number) %>%
+        select(Date, Status, Address, Parcel, MinBid, Appraisal, Case) %>%
+        mutate(Address =  gsub(",?   +,?", ", ", Address),
+               County = 'W')
 
     dat <- dat$Address %>%
         getCoord3(api_key, .) %>%
@@ -213,6 +220,20 @@ server <- function(input, output, session) {
                 position = 'bottomleft',
                 options = layersControlOptions(collapsed = TRUE)
             )
+    })
+    #"//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+    ####### OBSERVER: MARKER CLICK #####################
+    observe({
+        tmp <- input$mymap_marker_click
+        cat("\nclick\n")
+        tmp %>% unlist %>% print
+    })
+
+    ####### OBSERVER: MARKER HOVER #####################
+    observe({
+        tmp <- input$mymap_marker_mouseover
+        cat("\nmouseover\n")
+        tmp %>% unlist %>% print
     })
 }
 

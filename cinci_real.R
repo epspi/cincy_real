@@ -123,3 +123,56 @@ dat %>%
         baseGroups = c("OpenStreetMap.default", bases),
         options = layersControlOptions(collapsed = FALSE)
     )
+
+
+
+
+
+require(rvest)
+
+######## CONSTANTS #######
+cincy_url <- "http://apps.hcso.org/PropertySale.aspx"
+warren_url <- "http://www.co.warren.oh.us/auditor/property_search/parcel.asp"
+warren_redirect <- "http://www.co.warren.oh.us/auditor/property_search/prop_grid.asp?strSQL_CMD=SELECT+*+FROM+CAMAWEB.PRPTY+WHERE+SDWLL_NBR+like+'{parcel}%25'+ORDER+BY+SDWLL_NBR"
+test_par <- "15023490090"
+
+
+######## RUN #######
+session <- cincy_url %>% html_session
+form <- session %>%
+    html_form %>%
+    .[[1]]
+
+session <- submit_form(session, form, "btnCurrent")
+form <- session %>%
+    html_form %>%
+    .[[1]]
+
+dates <- form$fields[["ddlDate"]]$options %>% as.character %>% .[!. == ""]
+
+#cincy1(session, form, dates[8])
+
+dat2 <- dates %>%
+    lapply(function(x) cincy1(session, form, x)) %>%
+    do.call(rbind, .) %>%
+    rename(Date = SaleDate,
+           Status = WD,
+           Parcel = AttyPhone,
+           Case = CaseNO) %>%
+    select(Date, Status, Address, Parcel, MinBid, Appraisal, Case) %>%
+    mutate(Address = paste0(Address, ", Cincinnati OH"),
+           County = 'H')
+
+dat2 <- dat2$Address %>%
+    getCoord3(api_key, .) %>%
+    cbind(dat2, .)
+
+cincy1 <- function(session, form, date) {
+
+    submit_form(session,
+                form %>% set_values(ddlDate = date),
+                "btnGo") %>%
+        html_table %>%
+        .[[1]]
+}
+

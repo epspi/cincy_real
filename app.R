@@ -32,7 +32,7 @@ auto_refresh_time <- 3600 * 24
 api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
 time_file_format  <- "%Y-%m-%d %H:%M:%S"
 warren_redirect <- "http://www.co.warren.oh.us/auditor/property_search/prop_grid.asp?strSQL_CMD=SELECT+*+FROM+CAMAWEB.PRPTY+WHERE+SDWLL_NBR+like+'PARCEL_NUM%25'+ORDER+BY+SDWLL_NBR"
-hamilton_redirect <- "http://www.hamiltoncountyauditor.org/realestateii/list_owner.asp?sid=0EAD60E1968946338FEDA5D9F80EBC7F&owner=PARCEL_OWNER"
+hamilton_redirect <- "http://www.hamiltoncountyauditor.org/realestateii/list_owner.asp?sid=24B3C77B2BE44A06AA91BD6D8ABCB2F2&l_nm=owner&l_wc=|owner=PARCEL_OWNER&owner=PARCEL_OWNER"
 cincy_url <- "http://apps.hcso.org/PropertySale.aspx"
 instant_street <- 'https://www.instantstreetview.com/s/'
 
@@ -183,7 +183,7 @@ gen_popup <- function(dat) {
                                gsub("-","",.) %>%
                                gsub("PARCEL_NUM", . , warren_redirect),
                            dat["Name"] %>%
-                               gsub(",", " ", .) %>%
+                               gsub(",", "", .) %>%
                                gsub("PARCEL_OWNER", . , hamilton_redirect)
                            ),
                 target="_blank",

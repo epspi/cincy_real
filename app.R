@@ -32,8 +32,9 @@ auto_refresh_time <- 3600 * 24
 api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
 time_file_format  <- "%Y-%m-%d %H:%M:%S"
 warren_redirect <- "http://www.co.warren.oh.us/auditor/property_search/prop_grid.asp?strSQL_CMD=SELECT+*+FROM+CAMAWEB.PRPTY+WHERE+SDWLL_NBR+like+'PARCEL_NUM%25'+ORDER+BY+SDWLL_NBR"
+hamilton_redirect <- "http://www.hamiltoncountyauditor.org/realestateii/list_owner.asp?sid=0EAD60E1968946338FEDA5D9F80EBC7F&owner=PARCEL_OWNER"
 cincy_url <- "http://apps.hcso.org/PropertySale.aspx"
-
+instant_street <- 'https://www.instantstreetview.com/s/'
 
 ##################################################
 ################## FUNCTIONS #####################
@@ -100,9 +101,10 @@ rescrape <- function() {
                Address = Property.Address,
                Parcel = Parcel..,
                MinBid = Starting.Bid,
+               Name = Defendant,
                Appraisal = Appraisal.Amount,
                Case = Case.Number) %>%
-        select(Date, Status, Address, Parcel, MinBid, Appraisal, Case) %>%
+        select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case) %>%
         mutate(Address =  gsub(",?   +,?", ", ", Address),
                County = 'W')
 
@@ -126,7 +128,7 @@ rescrape <- function() {
                Status = WD,
                Parcel = AttyPhone,
                Case = CaseNO) %>%
-        select(Date, Status, Address, Parcel, MinBid, Appraisal, Case) %>%
+        select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case) %>%
         mutate(Address = paste0(Address, ", Cincinnati OH"),
                County = 'H')
 
@@ -173,14 +175,27 @@ gen_popup <- function(dat) {
           paste0(strong("A "), dat["Appraisal"],
                  strong('  /  S '), dat["MinBid"]),
           #dat["Parcel"],
-          a(href = dat["Parcel"] %>%
-                gsub("-","",.) %>%
-                gsub("PARCEL_NUM", . , warren_redirect),
-            target="_blank",
-            dat["Parcel"]),
-          #tags$i(class="fa fa-home")
-          icon("home")
-    ) #%>% paste0
+          paste0(
+              # Auditor link
+              a(href =
+                    ifelse(dat["County"] == "W",
+                           dat["Parcel"] %>%
+                               gsub("-","",.) %>%
+                               gsub("PARCEL_NUM", . , warren_redirect),
+                           dat["Name"] %>%
+                               gsub(",", " ", .) %>%
+                               gsub("PARCEL_OWNER", . , hamilton_redirect)
+                           ),
+                target="_blank",
+                dat["Parcel"]),
+
+              # Street View link
+              ' / ',
+              a(href = dat["Address"] %>% paste0(instant_street, .),
+                target="_blank",
+                'Street')
+          )
+    )
 }
 
 
@@ -202,7 +217,8 @@ ui <- navbarPage("Cincy Real", id = "nav",
                      )
                  ),
                  tabPanel(
-                     "Settings"
+                     "Settings",
+                     icon("home")
                  )
 )
 
@@ -262,16 +278,16 @@ server <- function(input, output, session) {
     ####### OUTPUT: MYMAP #####################
     output$mymap <- renderLeaflet({
         leaflet(dat) %>%
-            addMarkers(~lng, ~lat, popup = pop) %>%
-#             addMarkers(~lng, ~lat, popup = pop,
-#                 clusterOptions = markerClusterOptions()
-#             ) %>%
             addTiles(group = "OpenStreetMap.default") %>%
             addProviderTiles_recursive(providers) %>%
             addLayersControl(
                 baseGroups = c(providers, "OpenStreetMap.default"),
                 position = 'bottomleft',
                 options = layersControlOptions(collapsed = TRUE)
+            ) %>%
+            addMarkers(~lng, ~lat,
+                       popup = pop,
+                       clusterOptions = markerClusterOptions()
             )
     })
     #"//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",

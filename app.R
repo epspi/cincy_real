@@ -32,6 +32,7 @@ auto_refresh_time <- 3600 * 24
 api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
 time_file_format  <- "%Y-%m-%d %H:%M:%S"
 warren_redirect <- "http://www.co.warren.oh.us/auditor/property_search/prop_grid.asp?strSQL_CMD=SELECT+*+FROM+CAMAWEB.PRPTY+WHERE+SDWLL_NBR+like+'PARCEL_NUM%25'+ORDER+BY+SDWLL_NBR"
+cincy_url <- "http://apps.hcso.org/PropertySale.aspx"
 
 
 ##################################################
@@ -69,15 +70,33 @@ getCoord3 <- function(api_key, addresses) {
         do.call(rbind, .)
 }
 
+
+####### FUNCTION: CINCY1 ####################
+## Inner scraper for Hamilton county for a single date
+cincy1 <- function(session, form, date) {
+
+    submit_form(session,
+                form %>% set_values(ddlDate = date),
+                "btnGo") %>%
+        html_table %>%
+        .[[1]]
+}
+
+
 ####### FUNCTION: RESCRAPE #####################
 ## Fetch new data upon request
 rescrape <- function() {
+
+    cat("SCRAPING\n")
+    ptm <- proc.time()
+
+    # Warren County Scrape
     dat <- html("http://www.wcsooh.org/SheriffSales/slsgrid.aspx") %>%
         html_nodes("table") %>%
         html_table() %>%
         data.frame %>%
         rename(Date = Date.of.Sale,
-               Status = Sales.Status,
+               Status = Sale.Status,
                Address = Property.Address,
                Parcel = Parcel..,
                MinBid = Starting.Bid,
@@ -87,10 +106,42 @@ rescrape <- function() {
         mutate(Address =  gsub(",?   +,?", ", ", Address),
                County = 'W')
 
+
+    # Hamilton County Scrape
+    # submitting the form
+    session <- cincy_url %>% html_session
+    form <- session %>% html_form %>% .[[1]]
+
+    session <- submit_form(session, form, "btnCurrent")
+    form <- session %>% html_form %>% .[[1]]
+
+    # Getting the valid dates
+    dates <- form$fields[["ddlDate"]]$options %>% as.character %>% .[!. == ""]
+
+    # Looping over valid dates while scraping
+    dat2 <- dates %>%
+        lapply(function(x) cincy1(session, form, x)) %>%
+        do.call(rbind, .) %>%
+        rename(Date = SaleDate,
+               Status = WD,
+               Parcel = AttyPhone,
+               Case = CaseNO) %>%
+        select(Date, Status, Address, Parcel, MinBid, Appraisal, Case) %>%
+        mutate(Address = paste0(Address, ", Cincinnati OH"),
+               County = 'H')
+
+    # Combine counties
+    dat <- rbind(dat, dat2)
+
+    # Get latitude longitude
     dat <- dat$Address %>%
         getCoord3(api_key, .) %>%
         cbind(dat, .)
 
+    # Output time
+    print(proc.time() - ptm)
+
+    # Save output
     write.csv(Sys.time(), "CSV/timestamp.csv", row.names = F)
     write.csv(dat, "CSV/dat.csv",row.names = F)
 }
@@ -119,9 +170,8 @@ gen_popup <- function(dat) {
 
     paste(sep = "</br>",
           dat["Address"] %>% h4(),
-          paste0(strong("A "), dat["Appraisal.Amount"],
-                 strong('  /  S '), dat["Starting.Bid"],
-                 strong("  /  J "), dat["Judgement.Amount"]),
+          paste0(strong("A "), dat["Appraisal"],
+                 strong('  /  S '), dat["MinBid"]),
           #dat["Parcel"],
           a(href = dat["Parcel"] %>%
                 gsub("-","",.) %>%
@@ -213,6 +263,9 @@ server <- function(input, output, session) {
     output$mymap <- renderLeaflet({
         leaflet(dat) %>%
             addMarkers(~lng, ~lat, popup = pop) %>%
+#             addMarkers(~lng, ~lat, popup = pop,
+#                 clusterOptions = markerClusterOptions()
+#             ) %>%
             addTiles(group = "OpenStreetMap.default") %>%
             addProviderTiles_recursive(providers) %>%
             addLayersControl(

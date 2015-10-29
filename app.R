@@ -267,7 +267,7 @@ server <- function(input, output, session) {
 
         # Rescrape if due time
         if (curtime >= lasttime + auto_refresh_time) {
-            rescrape()
+            withProgress(message = "Refreshing data ...", rescrape())
         }
 
         # Filter out auctions that have already passed

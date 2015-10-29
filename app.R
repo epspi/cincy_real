@@ -88,64 +88,66 @@ cincy1 <- function(session, form, date) {
 ## Fetch new data upon request
 rescrape <- function() {
 
-    cat("SCRAPING\n")
-    ptm <- proc.time()
+        cat("SCRAPING\n")
+        ptm <- proc.time()
 
-    # Warren County Scrape
-    dat <- html("http://www.wcsooh.org/SheriffSales/slsgrid.aspx") %>%
-        html_nodes("table") %>%
-        html_table() %>%
-        data.frame %>%
-        rename(Date = Date.of.Sale,
-               Status = Sale.Status,
-               Address = Property.Address,
-               Parcel = Parcel..,
-               MinBid = Starting.Bid,
-               Name = Defendant,
-               Appraisal = Appraisal.Amount,
-               Case = Case.Number) %>%
-        select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case) %>%
-        mutate(Address =  gsub(",?   +,?", ", ", Address),
-               County = 'W')
+        # Warren County Scrape
+        setProgress(message = "Refreshing Warren County ...")
+        dat <- html("http://www.wcsooh.org/SheriffSales/slsgrid.aspx") %>%
+            html_nodes("table") %>%
+            html_table() %>%
+            data.frame %>%
+            rename(Date = Date.of.Sale,
+                   Status = Sale.Status,
+                   Address = Property.Address,
+                   Parcel = Parcel..,
+                   MinBid = Starting.Bid,
+                   Name = Defendant,
+                   Appraisal = Appraisal.Amount,
+                   Case = Case.Number) %>%
+            select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case) %>%
+            mutate(Address =  gsub(",?   +,?", ", ", Address),
+                   County = 'W')
 
 
-    # Hamilton County Scrape
-    # submitting the form
-    session <- cincy_url %>% html_session
-    form <- session %>% html_form %>% .[[1]]
+        # Hamilton County Scrape
+        setProgress(message = "Refreshing Hamilton County ...")
+        # submitting the form
+        session <- cincy_url %>% html_session
+        form <- session %>% html_form %>% .[[1]]
 
-    session <- submit_form(session, form, "btnCurrent")
-    form <- session %>% html_form %>% .[[1]]
+        session <- submit_form(session, form, "btnCurrent")
+        form <- session %>% html_form %>% .[[1]]
 
-    # Getting the valid dates
-    dates <- form$fields[["ddlDate"]]$options %>% as.character %>% .[!. == ""]
+        # Getting the valid dates
+        dates <- form$fields[["ddlDate"]]$options %>% as.character %>% .[!. == ""]
 
-    # Looping over valid dates while scraping
-    dat2 <- dates %>%
-        lapply(function(x) cincy1(session, form, x)) %>%
-        do.call(rbind, .) %>%
-        rename(Date = SaleDate,
-               Status = WD,
-               Parcel = AttyPhone,
-               Case = CaseNO) %>%
-        select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case) %>%
-        mutate(Address = paste0(Address, ", Cincinnati OH"),
-               County = 'H')
+        # Looping over valid dates while scraping
+        dat2 <- dates %>%
+            lapply(function(x) cincy1(session, form, x)) %>%
+            do.call(rbind, .) %>%
+            rename(Date = SaleDate,
+                   Status = WD,
+                   Parcel = AttyPhone,
+                   Case = CaseNO) %>%
+            select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case) %>%
+            mutate(Address = paste0(Address, ", Cincinnati OH"),
+                   County = 'H')
 
-    # Combine counties
-    dat <- rbind(dat, dat2)
+        # Combine counties
+        dat <- rbind(dat, dat2)
 
-    # Get latitude longitude
-    dat <- dat$Address %>%
-        getCoord3(api_key, .) %>%
-        cbind(dat, .)
+        # Get latitude longitude
+        dat <- dat$Address %>%
+            getCoord3(api_key, .) %>%
+            cbind(dat, .)
 
-    # Output time
-    print(proc.time() - ptm)
+        # Output time
+        print(proc.time() - ptm)
 
-    # Save output
-    write.csv(Sys.time(), "CSV/timestamp.csv", row.names = F)
-    write.csv(dat, "CSV/dat.csv",row.names = F)
+        # Save output
+        write.csv(Sys.time(), "CSV/timestamp.csv", row.names = F)
+        write.csv(dat, "CSV/dat.csv",row.names = F)
 }
 
 ####### FUNCTION: ADDPROVIDERTILES_RECURSIVE ##############
@@ -220,6 +222,9 @@ ui <- navbarPage("Cincy Real", id = "nav",
                      "Settings",
                      icon("home")
                  )
+#                  a(href = "", id = "get_refresh",
+#                    "Refresh"
+#                    )
 )
 
 
@@ -230,7 +235,7 @@ ui <- navbarPage("Cincy Real", id = "nav",
 server <- function(input, output, session) {
 
     ####### RUN INITIAL #####################
-    {
+    withProgress(message = "Loading data ...", {
         # Recording current time and checking timestamp from previously downloaded data
         curtime  <- Sys.time()
         lasttime <- try(
@@ -273,7 +278,7 @@ server <- function(input, output, session) {
             apply(1, gen_popup)
         names(pop) <- NULL
 
-    }
+    })
 
     ####### OUTPUT: MYMAP #####################
     output$mymap <- renderLeaflet({

@@ -6,6 +6,7 @@ require(httr)
 require(shiny)
 require(leaflet)
 require(dplyr)
+require(shinyBS)
 
 ##################################################
 ############ VARIABLES & CONSTANTS ###############
@@ -246,17 +247,32 @@ ui <- navbarPage("Cincy Real", id = "nav",
                              #includeScript("gomap.js")
                          ),
                          leafletOutput("mymap", width="100%", height="100%")
+#                          div(class = "btn-toolbar pull-right",
+#                              div(class = "btn-group btn-group-sm",
+#                                  actionButton("property_show_table", label = "List", icon = icon("list"))
+#                              )
+#                          ),
+#                              
+#                          bsModal(id = "property_modal", title = "Keywords", 
+#                                  trigger = "property_show_table", 
+#                                  size = "small",
+#                                  DT::dataTableOutput('property_table')
+#                          )
                      )
                  ),
                  tabPanel(
                      "Settings",
                      actionButton(
                          "refresh", label = "Refresh", icon = icon("refresh")
+                     ),
+                     actionButton("property_show_table", label = "List", icon = icon("list")),
+                     
+                     bsModal(id = "property_modal", title = "Properties List", 
+                             trigger = "property_show_table", 
+                             #size = "small",
+                             DT::dataTableOutput('property_table')
                      )
                  )
-#                  a(href = "", id = "get_refresh",
-#                    "Refresh"
-#                    )
 )
 
 
@@ -312,6 +328,20 @@ server <- function(input, output, session) {
 
     })
 
+    ####### OUTPUT: PROPERTY_LIST #####################
+    output$property_table <- renderDataTable({
+        #if (is.null(rel_terms())) return()
+        dat %>% select(-c(lat,lng))
+    },
+        #rownames = FALSE,
+        #colnames = c("Term", "Adj Freq"),
+        #style = 'bootstrap',
+        #width = "50%",
+        server = F,
+        class = 'hover',
+        options = list(dom = 'fitp', pageLength = 15)
+    )
+    
     
     ####### OUTPUT: MYMAP #####################
     output$mymap <- renderLeaflet({
@@ -320,6 +350,7 @@ server <- function(input, output, session) {
             addProviderTiles_recursive(providers) %>%
             addLayersControl(
                 baseGroups = c(providers, "OpenStreetMap.default"),
+                overlayGroups = c("Quakes", "Outline"),
                 position = 'bottomleft',
                 options = layersControlOptions(collapsed = TRUE)
             ) %>%

@@ -1,3 +1,7 @@
+.modal-dialog {
+    width:auto;
+}
+
 input[type="number"] {
     max-width: 80%;
 }

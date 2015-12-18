@@ -139,11 +139,11 @@ rescrape <- function() {
                    Case = CaseNO) %>%
             mutate(Address = paste0(Address,
                                     ", ",
-                                    Township,
+                                    "CINCINNATI", #Township,
                                     ", OHIO"),
                    County = 'H') %>%
-            mutate(Address = gsub("CINTI", "CINCINNATI", Address)) %>% 
-            mutate(Address = gsub("TWSP", "TOWNSHIP", Address)) %>% 
+#             mutate(Address = gsub("CINTI", "CINCINNATI", Address)) %>% 
+#             mutate(Address = gsub("TWSP", "TOWNSHIP", Address)) %>% 
             select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case, County)
         
         # Combine counties

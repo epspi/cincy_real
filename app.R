@@ -27,6 +27,9 @@ providers <- c(
     'HERE.normalDayGrey'
 )
 
+# Mapping color palette for circles
+pal <- colorFactor(c("#e41a1c", "#377eb8"), domain = c("Cancelled", "Scheduled"))
+
 # Some constants
 auto_refresh_time <- 3600 * 24
 #api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
@@ -78,11 +81,20 @@ getCoord3 <- function(api_key, addresses) {
 cincy1 <- function(session, form, date) {
 
     cat("Scraping Hamilton county for date ...",date,"\n")
-    submit_form(session,
-                form %>% set_values(ddlDate = date),
-                "btnGo") %>%
+    tmp.session <- submit_form(session,
+                             form %>% set_values(ddlDate = date),
+                             "btnGo") 
+    
+    tmp.avail <- tmp.session %>% 
+        read_html %>% 
+        html_nodes(".aspNetDisabled") %>% 
+        html_nodes("input") %>% 
+        html_attr("checked")
+    
+    tmp.table <- tmp.session %>%
         html_table %>%
-        .[[1]]
+        .[[1]] %>% 
+        mutate(WD = ifelse(is.na(tmp.avail), "Scheduled", "Cancelled"))
 }
 
 
@@ -238,7 +250,9 @@ ui <- navbarPage("Cincy Real", id = "nav",
                  ),
                  tabPanel(
                      "Settings",
-                     icon("home")
+                     actionButton(
+                         "refresh", label = "Refresh", icon = icon("refresh")
+                     )
                  )
 #                  a(href = "", id = "get_refresh",
 #                    "Refresh"
@@ -288,7 +302,7 @@ server <- function(input, output, session) {
             withProgress(message = "Refreshing data ...", rescrape())
         }
 
-        # Filter out auctions that have already passed
+        # Read in auction data
         dat  <- "CSV/dat.csv" %>%
             read.csv(stringsAsFactors = F)
 
@@ -298,6 +312,7 @@ server <- function(input, output, session) {
 
     })
 
+    
     ####### OUTPUT: MYMAP #####################
     output$mymap <- renderLeaflet({
         leaflet(dat) %>%
@@ -308,12 +323,28 @@ server <- function(input, output, session) {
                 position = 'bottomleft',
                 options = layersControlOptions(collapsed = TRUE)
             ) %>%
-            addMarkers(~lng, ~lat,
+            addCircleMarkers(~lng, ~lat,
                        popup = pop,
-                       clusterOptions = markerClusterOptions()
+                       clusterOptions = markerClusterOptions(),
+                       #radius = 10,
+                       radius = ~sqrt(as.numeric(gsub("[$,]","", Appraisal))/1000),
+                       color = ~pal(Status),
+                       stroke = FALSE, fillOpacity = 0.65
             )
     })
-    #"//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+    
+    ####### OBSERVER: REFRESH #####################
+    observeEvent(input$refresh, {
+        withProgress(message = "Refreshing data ...", rescrape())
+        
+        dat  <- "CSV/dat.csv" %>%
+            read.csv(stringsAsFactors = F)
+        
+        pop <- dat %>%
+            apply(1, gen_popup)
+        names(pop) <- NULL
+    })
+    
     ####### OBSERVER: MARKER CLICK #####################
     observe({
         tmp <- input$mymap_marker_click

@@ -76,6 +76,7 @@ getCoord3 <- function(api_key, addresses) {
 ## Inner scraper for Hamilton county for a single date
 cincy1 <- function(session, form, date) {
 
+    cat("Scraping Hamilton county for date ...",date,"\n")
     submit_form(session,
                 form %>% set_values(ddlDate = date),
                 "btnGo") %>%
@@ -92,8 +93,10 @@ rescrape <- function() {
         ptm <- proc.time()
 
         # Warren County Scrape
-        setProgress(message = "Refreshing Warren County ...")
-        dat <- html("http://www.wcsooh.org/SheriffSales/slsgrid.aspx") %>%
+        msg <- "Refreshing Warren County ..."
+        cat(msg,"\n")
+        setProgress(message = msg)
+        dat <- read_html("http://www.wcsooh.org/SheriffSales/slsgrid.aspx") %>%
             html_nodes("table") %>%
             html_table() %>%
             data.frame %>%
@@ -105,13 +108,15 @@ rescrape <- function() {
                    Name = Defendant,
                    Appraisal = Appraisal.Amount,
                    Case = Case.Number) %>%
-            select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case) %>%
             mutate(Address =  gsub(",?   +,?", ", ", Address),
-                   County = 'W')
+                   County = 'W') %>%
+            select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case, County)
 
 
         # Hamilton County Scrape
-        setProgress(message = "Refreshing Hamilton County ...")
+        msg <- "Refreshing Hamilton County ..."
+        cat(msg, "\n")
+        setProgress(message = msg)
         # submitting the form
         session <- cincy_url %>% html_session
         form <- session %>% html_form %>% .[[1]]
@@ -120,6 +125,7 @@ rescrape <- function() {
         form <- session %>% html_form %>% .[[1]]
 
         # Getting the valid dates
+        cat("Getting valid dates\n")
         dates <- form$fields[["ddlDate"]]$options %>% as.character %>% .[!. == ""]
 
         # Looping over valid dates while scraping
@@ -130,14 +136,23 @@ rescrape <- function() {
                    Status = WD,
                    Parcel = AttyPhone,
                    Case = CaseNO) %>%
-            select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case) %>%
-            mutate(Address = paste0(Address, ", Cincinnati OH"),
-                   County = 'H')
+            mutate(Address = paste0(Address,
+                                    ", ",
+                                    gsub("CINTI", "CINCINNATI", Township),
+                                    ", OH"),
+                   County = 'H') %>%
+            select(Date, Status, Address, Name, Parcel, MinBid, Appraisal, Case, County)
 
         # Combine counties
+        msg <- "Combining counties ... "
+        cat(msg,"\n")
+        setProgress(message = msg)
         dat <- rbind(dat, dat2)
 
         # Get latitude longitude
+        msg <- "Fetching coordinates ... "
+        cat(msg,"\n")
+        setProgress(message = msg)
         dat <- dat$Address %>%
             getCoord3(api_key, .) %>%
             cbind(dat, .)

@@ -29,7 +29,8 @@ providers <- c(
 
 # Some constants
 auto_refresh_time <- 3600 * 24
-api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
+#api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
+api_key <- '786637d0b88317996dbb58b554bb8139d711879'
 time_file_format  <- "%Y-%m-%d %H:%M:%S"
 warren_redirect <- "http://www.co.warren.oh.us/auditor/property_search/prop_grid.asp?strSQL_CMD=SELECT+*+FROM+CAMAWEB.PRPTY+WHERE+SDWLL_NBR+like+'PARCEL_NUM%25'+ORDER+BY+SDWLL_NBR"
 hamilton_redirect <- "http://www.hamiltoncountyauditor.org/realestateii/list_owner.asp?sid=24B3C77B2BE44A06AA91BD6D8ABCB2F2&l_nm=owner&l_wc=|owner=PARCEL_OWNER&owner=PARCEL_OWNER"

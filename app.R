@@ -205,6 +205,7 @@ gen_popup <- function(dat) {
 
     paste(sep = "</br>",
           dat["Address"] %>% h4(),
+          paste0(strong("Date: "), dat["Date"]),
           paste0(strong("A "), dat["Appraisal"],
                  strong('  /  S '), dat["MinBid"]),
           #dat["Parcel"],

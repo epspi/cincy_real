@@ -330,17 +330,13 @@ server <- function(input, output, session) {
     })
 
     ####### OUTPUT: PROPERTY_LIST #####################
-    output$property_table <- renderDataTable({
-        #if (is.null(rel_terms())) return()
-        dat %>% select(-c(lat,lng))
-    },
-        #rownames = FALSE,
-        #colnames = c("Term", "Adj Freq"),
+    output$property_table <- renderDataTable(
+        {dat %>% select(-c(lat,lng))},
         #style = 'bootstrap',
         #width = "50%",
-        server = F,
-        class = 'hover',
-        options = list(dom = 'fitp', pageLength = 15)
+        #server = F,
+        #class = 'hover',
+        options = list(dom = 'fitp', pageLength = 25)
     )
     
     

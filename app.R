@@ -42,7 +42,7 @@ hamilton_newsession_url <- "http://www.hamiltoncountyauditor.org/hamilton/defaul
 cincy_url <- "http://apps.hcso.org/PropertySale.aspx"
 instant_street <- 'https://www.instantstreetview.com/s/'
 google_url <- "https://www.google.com/maps/place/"
-bing_url <- "http://www.bing.com/mapspreview?&lvl=19&style=h&q="
+bing_url <- "http://www.bing.com/mapspreview?&lvl=19&style=b&q="
 
 ##################################################
 ################## FUNCTIONS #####################
@@ -234,11 +234,11 @@ gen_popup <- function(dat, ham.cookie) {
               ' / ',
               a(href = dat["Address"] %>% paste0(google_url, .),
                 target="_blank",
-                'Google Map'),
+                'Google'),
               ' / ',
               a(href = dat["Address"] %>% paste0(bing_url, .),
                 target="_blank",
-                'Bing Map')
+                'Bing')
           )
     )
 }

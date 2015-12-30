@@ -37,9 +37,12 @@ api_key <- '3a1e5f46619520940685de1d4cf630cc3ed92f9'
 #api_key <- '786637d0b88317996dbb58b554bb8139d711879'
 time_file_format  <- "%Y-%m-%d %H:%M:%S"
 warren_redirect <- "http://www.co.warren.oh.us/auditor/property_search/prop_grid.asp?strSQL_CMD=SELECT+*+FROM+CAMAWEB.PRPTY+WHERE+SDWLL_NBR+like+'PARCEL_NUM%25'+ORDER+BY+SDWLL_NBR"
-hamilton_redirect <- "http://www.hamiltoncountyauditor.org/realestateii/list_owner.asp?sid=24B3C77B2BE44A06AA91BD6D8ABCB2F2&l_nm=owner&l_wc=|owner=PARCEL_OWNER&owner=PARCEL_OWNER"
+hamilton_redirect <- "http://www.hamiltoncountyauditor.org/realestateii/list_owner.asp?sid=%s&l_nm=owner&l_wc=|owner=PARCEL_OWNER&owner=PARCEL_OWNER"
+hamilton_newsession_url <- "http://www.hamiltoncountyauditor.org/hamilton/default.asp"
 cincy_url <- "http://apps.hcso.org/PropertySale.aspx"
 instant_street <- 'https://www.instantstreetview.com/s/'
+google_url <- "https://www.google.com/maps/place/"
+bing_url <- "http://www.bing.com/mapspreview?&lvl=19&style=h&q="
 
 ##################################################
 ################## FUNCTIONS #####################
@@ -201,7 +204,7 @@ addProviderTiles_recursive <- function(map, providers) {
 
 ####### FUNCTION: GEN_POPUP ####################
 ## Generate HTML for popup
-gen_popup <- function(dat) {
+gen_popup <- function(dat, ham.cookie) {
 
     paste(sep = "</br>",
           dat["Address"] %>% h4(),
@@ -218,7 +221,7 @@ gen_popup <- function(dat) {
                                gsub("PARCEL_NUM", . , warren_redirect),
                            dat["Name"] %>%
                                gsub(",", "", .) %>%
-                               gsub("PARCEL_OWNER", . , hamilton_redirect)
+                               gsub("PARCEL_OWNER", . , hamilton_redirect %>% sprintf(ham.cookie))
                            ),
                 target="_blank",
                 dat["Parcel"]),
@@ -227,7 +230,15 @@ gen_popup <- function(dat) {
               ' / ',
               a(href = dat["Address"] %>% paste0(instant_street, .),
                 target="_blank",
-                'Street')
+                'Street'),
+              ' / ',
+              a(href = dat["Address"] %>% paste0(google_url, .),
+                target="_blank",
+                'Google Map'),
+              ' / ',
+              a(href = dat["Address"] %>% paste0(bing_url, .),
+                target="_blank",
+                'Bing Map')
           )
     )
 }
@@ -319,12 +330,19 @@ server <- function(input, output, session) {
             withProgress(message = "Refreshing data ...", rescrape())
         }
 
+        cat('about to create hamilton cookie\n')
+        # Establish new Hamilton county session
+        hamilton.cookie <- hamilton_newsession_url %>% 
+            html_session %>% 
+            cookies() %>% .[["value"]] %>% .[1]
+        
+        cat('created hamilton cookie: ', hamilton.cookie,'\n')
         # Read in auction data
         dat  <- "CSV/dat.csv" %>%
             read.csv(stringsAsFactors = F)
 
         pop <- dat %>%
-            apply(1, gen_popup)
+            apply(1, function(x) gen_popup(x, hamilton.cookie))
         names(pop) <- NULL
 
     })

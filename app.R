@@ -279,6 +279,7 @@ ui <- navbarPage("Cincy Real", id = "nav",
                      ),
                      actionButton("property_show_table", label = "List", icon = icon("list")),
                      
+                     a("Hamilton County Property Sales", href = "http://apps.hcso.org/PropertySale.aspx"),
                      bsModal(id = "property_modal", title = "Properties List", 
                              trigger = "property_show_table", 
                              #size = "small",
@@ -387,7 +388,7 @@ server <- function(input, output, session) {
             read.csv(stringsAsFactors = F)
         
         pop <- dat %>%
-            apply(1, gen_popup)
+            apply(1, function(x) gen_popup(x, hamilton.cookie))
         names(pop) <- NULL
     })
     
